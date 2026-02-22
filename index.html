@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareWatch — Inteligência que cuida, tecnologia que previne</title>
+  <meta name="description"
+    content="CareWatch: Monitoramento contínuo via wearables, orientações personalizadas por IA e assistente médico inteligente. Protótipo interativo." />
+  <meta property="og:title" content="CareWatch — Protótipo Interativo" />
+  <meta property="og:description"
+    content="Inteligência que cuida, tecnologia que previne. Plataforma de saúde preventiva com wearables e IA." />
+  <meta property="og:type" content="website" />
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦉</text></svg>" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body,
+    #root {
+      min-height: 100vh;
+    }
+
+    body {
+      font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel" data-type="module">
+    const { useState, useEffect, useRef } = React;
+
+    /* ═══════════════════════════════════════════════════════════
+       CAREWATCH UNIFIED — Landing Prototype + Mobile App Mockup
+       Route "/" → Prototype landing with phone demo
+       Route "/app" → Full standalone mobile app mockup
+       ═══════════════════════════════════════════════════════════ */
+
+    /* ── COLORS ── */
+    const D = {
+      primary: "#5B2180", primaryLight: "#7C3AED", primaryDark: "#4A1A6B",
+      accent: "#34C77B", accentLight: "#B8E6C8",
+      success: "#10B981", warning: "#F59E0B", danger: "#EF4444",
+      bg: "#EFF5EE", bgCard: "#FFFFFF", bgElevated: "#F6FAF5",
+      text: "#2D1854", textSec: "#5B5675", textMuted: "#8A849E",
+      border: "#D8E8D4", borderLight: "#C8DCC4",
+      mint: "#C8F0C8", mintLight: "#E8F8E8",
+    };
+    const L = {
+      primary: "#6C3CE1", primaryLight: "#8B5CF6", primaryDark: "#4C1D95",
+      primaryBg: "#F0EBFF", primaryBg2: "#E8E0FF",
+      accent: "#FF6B35", accentLight: "#FFF0EA",
+      success: "#10B981", successBg: "#ECFDF5",
+      warning: "#F59E0B", warningBg: "#FFFBEB",
+      danger: "#EF4444", dangerBg: "#FEF2F2",
+      white: "#FFFFFF", bg: "#F7F5FB", card: "#FFFFFF",
+      text: "#1A1034", textSec: "#5B5675", textMuted: "#9490A8",
+      border: "#EDE9F5", borderDark: "#D8D2E8",
+    };
+
+    /* ── OWL LOGO ── */
+    const OwlLogo = ({ size = 32 }) => (
+      <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+        <ellipse cx="50" cy="55" rx="30" ry="35" fill="url(#owlG)" />
+        <ellipse cx="50" cy="50" rx="22" ry="18" fill="url(#owlG2)" opacity=".5" />
+        <circle cx="38" cy="42" r="11" fill="#fff" /><circle cx="62" cy="42" r="11" fill="#fff" />
+        <circle cx="40" cy="42" r="5.5" fill={D.primaryDark} /><circle cx="60" cy="42" r="5.5" fill={D.primaryDark} />
+        <circle cx="41.5" cy="40.5" r="2" fill="#fff" /><circle cx="61.5" cy="40.5" r="2" fill="#fff" />
+        <path d="M45 52L50 57L55 52" stroke={D.accent} strokeWidth="3" strokeLinecap="round" fill="none" />
+        <path d="M30 30Q35 18 42 28" fill={D.accent} /><path d="M70 30Q65 18 58 28" fill={D.accent} />
+        <defs>
+          <linearGradient id="owlG" x1="20" y1="20" x2="80" y2="90"><stop stopColor={D.primary} /><stop offset="1" stopColor={D.primaryDark} /></linearGradient>
+          <linearGradient id="owlG2" x1="28" y1="32" x2="72" y2="68"><stop stopColor="#C084FC" /><stop offset="1" stopColor="#9F67FF" /></linearGradient>
+        </defs>
+      </svg>
+    );
+
+    /* ── SHARED HELPERS ── */
+    const Pulse = ({ color = D.success }) => (
+      <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: 12, height: 12 }}>
+        <span style={{ position: "absolute", width: 12, height: 12, borderRadius: "50%", backgroundColor: color, opacity: .4, animation: "cw-pulse 2s ease-in-out infinite" }} />
+        <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: color }} />
+      </span>
+    );
+
+    const SparkD = ({ data, color, w = 88, h = 24 }) => {
+      const mx = Math.max(...data), mn = Math.min(...data), r = mx - mn || 1;
+      const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - mn) / r) * (h - 4) - 2}`).join(" ");
+      const id = `sd${color.replace("#", "")}`;
+      return (<svg width={w} height={h} style={{ overflow: "visible", display: "block" }}><defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop stopColor={color} stopOpacity=".2" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs><polygon fill={`url(#${id})`} points={`0,${h} ${pts} ${w},${h}`} /><polyline fill="none" stroke={color} strokeWidth="2" points={pts} strokeLinecap="round" strokeLinejoin="round" /></svg>);
+    };
+
+    const SparkL = ({ data, color, w = 100, h = 26 }) => {
+      const mx = Math.max(...data), mn = Math.min(...data), r = mx - mn || 1;
+      const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - mn) / r) * (h - 4) - 2}`).join(" ");
+      const id = `sl${color.replace("#", "")}`;
+      return (<svg width={w} height={h} style={{ overflow: "visible", display: "block" }}><defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop stopColor={color} stopOpacity=".2" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs><polygon fill={`url(#${id})`} points={`0,${h} ${pts} ${w},${h}`} /><polyline fill="none" stroke={color} strokeWidth="2" points={pts} strokeLinecap="round" strokeLinejoin="round" /></svg>);
+    };
+
+    const CircProg = ({ value, size = 60, sw = 5, color = D.primary, bgc = D.border }) => {
+      const r = (size - sw) / 2, c = 2 * Math.PI * r;
+      return (<svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}><circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={bgc} strokeWidth={sw} /><circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={sw} strokeDasharray={c} strokeDashoffset={c - (value / 100) * c} strokeLinecap="round" style={{ transition: "stroke-dashoffset 1.2s ease-out" }} /></svg>);
+    };
+
+    const AnimNum = ({ target, suffix = "", dur = 2000 }) => {
+      const [c, setC] = useState(0);
+      const [go, setGo] = useState(false);
+      const ref = useRef(null);
+      useEffect(() => { const o = new IntersectionObserver(([e]) => { if (e.isIntersecting) setGo(true); }, { threshold: .5 }); if (ref.current) o.observe(ref.current); return () => o.disconnect(); }, []);
+      useEffect(() => { if (!go) return; let s = 0; const inc = target / (dur / 16); const t = setInterval(() => { s += inc; if (s >= target) { setC(target); clearInterval(t); } else setC(Math.floor(s)); }, 16); return () => clearInterval(t); }, [go, target, dur]);
+      return <span ref={ref}>{c}{suffix}</span>;
+    };
+
+    const BadgeD = ({ text, color }) => (<span style={{ fontSize: 9, fontWeight: 700, color, background: `${color}18`, padding: "3px 8px", borderRadius: 6, letterSpacing: .3 }}>{text}</span>);
+    const BadgeL = ({ text, color, bg }) => (<span style={{ fontSize: 9, fontWeight: 700, color, background: bg || `${color}15`, padding: "3px 8px", borderRadius: 6, letterSpacing: .4 }}>{text}</span>);
+    const CardD = ({ children, style: s = {} }) => (<div style={{ background: D.bgElevated, borderRadius: 16, padding: 14, border: `1px solid ${D.border}`, marginBottom: 10, ...s }}>{children}</div>);
+
+    /* ══════════════════════════════════════════════════════════════
+       PART 1: LANDING / PROTOTYPE PAGE (Light mint theme matching pitch deck)
+       ══════════════════════════════════════════════════════════════ */
+
+    /* -- Landing Screens (inside phone mockup) -- */
+    const LHomeScreen = () => (
+      <div style={{ padding: "0 14px 16px", height: 500, overflowY: "auto" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <div>
+            <p style={{ color: D.textMuted, fontSize: 11, margin: 0 }}>Bom dia,</p>
+            <p style={{ color: D.text, fontSize: 17, fontWeight: 700, margin: 0 }}>Maria Silva</p>
+          </div>
+          <div style={{ width: 38, height: 38, borderRadius: 19, background: `linear-gradient(135deg,${D.primary},${D.accent})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 14 }}>MS</div>
+        </div>
+        <div style={{ background: `linear-gradient(135deg,${D.primary},${D.primaryDark})`, borderRadius: 20, padding: 18, marginBottom: 14, position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -20, right: -20, width: 90, height: 90, borderRadius: "50%", background: "rgba(255,255,255,.07)" }} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <p style={{ color: "rgba(255,255,255,.65)", fontSize: 11, margin: "0 0 4px" }}>Health Score</p>
+              <p style={{ color: "#fff", fontSize: 34, fontWeight: 800, margin: "0 0 2px", letterSpacing: -1 }}>87</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ color: "#86EFAC", fontSize: 10 }}>▲ +3</span><span style={{ color: "rgba(255,255,255,.45)", fontSize: 10 }}>vs. semana anterior</span></div>
+            </div>
+            <CircProg value={87} size={66} sw={5} color="#86EFAC" bgc="rgba(255,255,255,.12)" />
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+          {[{ l: "Freq. Cardíaca", v: "72", u: "bpm", c: D.danger, d: [68, 71, 75, 72, 70, 73, 72] }, { l: "SpO₂", v: "98", u: "%", c: D.primary, d: [97, 98, 97, 98, 99, 98, 98] }, { l: "Glicemia", v: "95", u: "mg/dL", c: D.accent, d: [110, 105, 98, 102, 95, 97, 95] }, { l: "Pressão", v: "120/80", u: "mmHg", c: D.success, d: [125, 122, 121, 120, 119, 120, 120] }].map((v, i) => (
+            <div key={i} style={{ background: D.bgElevated, borderRadius: 14, padding: 12, border: `1px solid ${D.border}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}><Pulse color={v.c} /><span style={{ color: D.textMuted, fontSize: 10 }}>{v.l}</span></div>
+              <p style={{ color: D.text, fontSize: 20, fontWeight: 700, margin: "0 0 1px" }}>{v.v}</p>
+              <span style={{ color: D.textMuted, fontSize: 9 }}>{v.u}</span>
+              <div style={{ marginTop: 6 }}><SparkD data={v.d} color={v.c} /></div>
+            </div>
+          ))}
+        </div>
+        <CardD>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}><span style={{ fontSize: 13 }}>📋</span><span style={{ color: D.text, fontSize: 12, fontWeight: 600 }}>Tarefas de Hoje</span></div>
+          {[{ text: "Medir glicemia em jejum", done: true, time: "07:00" }, { text: "Metformina 850mg", done: true, time: "08:30" }, { text: "Caminhada 30min", done: false, time: "10:00" }, { text: "Glicemia pós-almoço", done: false, time: "14:00" }, { text: "Metformina 850mg", done: false, time: "20:00" }].map((t, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: i ? `1px solid ${D.border}` : "none" }}>
+              <div style={{ width: 20, height: 20, borderRadius: 6, border: `2px solid ${t.done ? D.success : D.borderLight}`, background: t.done ? D.success : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#fff", flexShrink: 0 }}>{t.done ? "✓" : ""}</div>
+              <span style={{ color: t.done ? D.textMuted : D.text, fontSize: 12, flex: 1, textDecoration: t.done ? "line-through" : "none" }}>{t.text}</span>
+              <span style={{ color: D.textMuted, fontSize: 10 }}>{t.time}</span>
+            </div>
+          ))}
+        </CardD>
+      </div>
+    );
+
+    const LRecsScreen = () => (
+      <div style={{ padding: "0 14px 16px", height: 500, overflowY: "auto" }}>
+        <p style={{ color: D.text, fontSize: 17, fontWeight: 700, margin: "0 0 2px" }}>Orientações</p>
+        <p style={{ color: D.textMuted, fontSize: 11, margin: "0 0 14px" }}>Personalizadas para sua condição</p>
+        <div style={{ background: `linear-gradient(135deg,${D.accent}18,${D.accent}08)`, borderRadius: 18, padding: 16, marginBottom: 14, border: `1px solid ${D.accent}33` }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 18 }}>🩸</span><span style={{ color: D.text, fontSize: 13, fontWeight: 700 }}>Monitoramento da Glicemia</span></div>
+            <BadgeD text="PRIORITÁRIO" color={D.accent} />
+          </div>
+          <p style={{ color: D.textSec, fontSize: 12, lineHeight: 1.6, margin: "0 0 12px" }}>Mantenha controle rigoroso dos níveis glicêmicos. Meça 3x ao dia.</p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button style={{ flex: 1, padding: "10px 0", borderRadius: 10, background: D.accent, border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Registrar Medição</button>
+          </div>
+        </div>
+        {[{ icon: "💊", t: "Medicação — Metformina", b: "LEMBRETE", bc: D.primary, d: "Tomar 850mg após o almoço com alimentos." }, { icon: "🥗", t: "Dieta para Diabéticos", b: "ORIENTAÇÃO", bc: D.success, d: "Prefira carboidratos complexos e fibras." }, { icon: "🏃", t: "Atividade Física", b: "ORIENTAÇÃO", bc: D.success, d: "Caminhadas leves de 30 min/dia, 5x por semana." }, { icon: "😴", t: "Qualidade do Sono", b: "ATENÇÃO", bc: D.warning, d: "Sono abaixo do ideal nas últimas 3 noites." }].map((c, i) => (
+          <CardD key={i}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 16 }}>{c.icon}</span><span style={{ color: D.text, fontSize: 13, fontWeight: 600 }}>{c.t}</span></div>
+              <BadgeD text={c.b} color={c.bc} />
+            </div>
+            <p style={{ color: D.textSec, fontSize: 12, lineHeight: 1.5, margin: 0 }}>{c.d}</p>
+          </CardD>
+        ))}
+      </div>
+    );
+
+    const LProfileScreen = () => (
+      <div style={{ padding: "0 14px 16px", height: 500, overflowY: "auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 18 }}>
+          <div style={{ width: 64, height: 64, borderRadius: 32, margin: "0 auto 10px", background: `linear-gradient(135deg,${D.primary},${D.accent})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 22, border: `3px solid ${D.bgCard}` }}>MS</div>
+          <p style={{ color: D.text, fontSize: 16, fontWeight: 700, margin: "0 0 2px" }}>Maria Silva</p>
+          <p style={{ color: D.textMuted, fontSize: 11, margin: 0 }}>58 anos · Feminino · São Paulo, SP</p>
+        </div>
+        <CardD><p style={{ color: D.text, fontSize: 12, fontWeight: 600, margin: "0 0 10px" }}>Condições</p><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{["Diabetes Tipo 2", "Hipertensão", "Hipotireoidismo"].map((c, i) => (<span key={i} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 8, background: `${D.primary}15`, color: D.primaryLight, border: `1px solid ${D.primary}33` }}>{c}</span>))}</div></CardD>
+        <CardD><p style={{ color: D.text, fontSize: 12, fontWeight: 600, margin: "0 0 10px" }}>Medicações em Uso</p>{[{ n: "Metformina 850mg", f: "2x ao dia" }, { n: "Losartana 50mg", f: "1x ao dia" }, { n: "Levotiroxina 75mcg", f: "Jejum" }].map((m, i) => (<div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: i ? `1px solid ${D.border}` : "none" }}><span style={{ fontSize: 14 }}>💊</span><div style={{ flex: 1 }}><p style={{ color: D.text, fontSize: 12, fontWeight: 600, margin: 0 }}>{m.n}</p><p style={{ color: D.textMuted, fontSize: 10, margin: 0 }}>{m.f}</p></div></div>))}</CardD>
+        <CardD style={{ borderColor: `${D.danger}33` }}><p style={{ color: D.text, fontSize: 12, fontWeight: 600, margin: "0 0 8px" }}>Contato de Emergência</p><div style={{ display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 36, height: 36, borderRadius: 18, background: `${D.danger}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>👤</div><div><p style={{ color: D.text, fontSize: 12, fontWeight: 600, margin: 0 }}>João Silva (Filho)</p><p style={{ color: D.textMuted, fontSize: 11, margin: 0 }}>(11) 98765-4321</p></div></div></CardD>
+      </div>
+    );
+
+    const LChatScreen = () => {
+      const [input, setInput] = useState("");
+      const [msgs, setMsgs] = useState([
+        { from: "bot", text: "Olá Maria! Sou o Dr. Assistant. Como posso ajudar?" },
+        { from: "user", text: "Minha glicemia deu 130 mg/dL em jejum. Devo me preocupar?" },
+        {
+          from: "bot", text: `Uma glicemia de 130 em jejum está um pouco acima do ideal (até 100). Recomendo:
+• Verificar se foi em jejum real
+• Repetir amanhã
+• Manter a Metformina
+• Evitar carboidratos simples hoje` },
+        { from: "bot", text: "Se continuar acima de 130 por 3 dias, agende com seu endocrinologista. Posso ajudar?" },
+      ]);
+      const ref = useRef(null);
+      useEffect(() => { ref.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+      const send = () => { if (!input.trim()) return; setMsgs(p => [...p, { from: "user", text: input.trim() }]); setInput(""); setTimeout(() => { setMsgs(p => [...p, { from: "bot", text: "Vou analisar seus dados e incluir no acompanhamento. Lembre-se de medir antes do almoço." }]); }, 1000); };
+      return (
+        <div style={{ display: "flex", flexDirection: "column", height: 500 }}>
+          <div style={{ padding: "10px 14px", borderBottom: `1px solid ${D.border}`, display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 18, background: `linear-gradient(135deg,${D.primary},${D.primaryLight})`, display: "flex", alignItems: "center", justifyContent: "center" }}><OwlLogo size={22} /></div>
+            <div><p style={{ color: D.text, fontSize: 13, fontWeight: 600, margin: 0 }}>Dr. Assistant</p><div style={{ display: "flex", alignItems: "center", gap: 4 }}><Pulse color={D.success} /><span style={{ color: D.success, fontSize: 10 }}>Online</span></div></div>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+            {msgs.map((m, i) => (<div key={i} style={{ alignSelf: m.from === "user" ? "flex-end" : "flex-start", maxWidth: "82%", background: m.from === "user" ? D.primary : D.bgElevated, border: m.from === "user" ? "none" : `1px solid ${D.border}`, borderRadius: m.from === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px", padding: "10px 14px" }}><p style={{ color: m.from === "user" ? "#fff" : D.textSec, fontSize: 12, lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>{m.text}</p></div>))}
+            <div ref={ref} />
+          </div>
+          <div style={{ padding: "8px 14px 12px", display: "flex", gap: 8 }}>
+            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="Digite sua pergunta..." style={{ flex: 1, padding: "10px 14px", borderRadius: 14, background: D.bgElevated, border: `1px solid ${D.border}`, color: D.text, fontSize: 12, outline: "none", fontFamily: "inherit" }} />
+            <button onClick={send} style={{ width: 40, height: 40, borderRadius: 14, border: "none", background: D.primary, color: "#fff", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>→</button>
+          </div>
+        </div>
+      );
+    };
+
+    const LWearScreen = () => (
+      <div style={{ padding: "0 14px 16px", height: 500, overflowY: "auto" }}>
+        <p style={{ color: D.text, fontSize: 17, fontWeight: 700, margin: "0 0 2px" }}>Wearables</p>
+        <p style={{ color: D.textMuted, fontSize: 11, margin: "0 0 14px" }}>Seus dispositivos conectados</p>
+        <div style={{ background: `linear-gradient(135deg,${D.bgElevated},${D.bgCard})`, borderRadius: 18, padding: 16, marginBottom: 12, border: `1px solid ${D.success}33` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 13, background: `${D.primary}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>⌚</div>
+            <div><p style={{ color: D.text, fontSize: 13, fontWeight: 600, margin: 0 }}>Galaxy Watch 6</p><p style={{ color: D.success, fontSize: 10, margin: 0 }}>● Conectado</p></div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+            {[{ l: "Bateria", v: "72%" }, { l: "Última sync", v: "2min" }, { l: "Dados/dia", v: "1.2k" }].map((s, i) => (<div key={i} style={{ textAlign: "center", padding: 7, background: D.bgCard, borderRadius: 10 }}><p style={{ color: D.textMuted, fontSize: 9, margin: "0 0 2px" }}>{s.l}</p><p style={{ color: D.text, fontSize: 12, fontWeight: 600, margin: 0 }}>{s.v}</p></div>))}
+          </div>
+        </div>
+        {[{ icon: "❤️", n: "Freq. Cardíaca", f: "A cada 5min" }, { icon: "🩸", n: "SpO₂", f: "A cada 15min" }, { icon: "🏃", n: "Atividade Física", f: "Contínuo" }, { icon: "😴", n: "Qualidade do Sono", f: "Diário" }, { icon: "🌡️", n: "Temperatura", f: "A cada 30min" }].map((s, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: 10, marginBottom: 6, background: D.bgElevated, borderRadius: 12, border: `1px solid ${D.border}` }}>
+            <span style={{ fontSize: 16 }}>{s.icon}</span>
+            <div style={{ flex: 1 }}><p style={{ color: D.text, fontSize: 11, fontWeight: 600, margin: 0 }}>{s.n}</p><p style={{ color: D.textMuted, fontSize: 9, margin: 0 }}>{s.f}</p></div>
+            <div style={{ width: 34, height: 18, borderRadius: 9, padding: 2, background: D.success, display: "flex", alignItems: "center", justifyContent: "flex-end" }}><div style={{ width: 14, height: 14, borderRadius: 7, background: "#fff" }} /></div>
+          </div>
+        ))}
+        <div style={{ marginTop: 10, padding: 12, background: `${D.primary}08`, borderRadius: 12, border: `1px solid ${D.primary}22` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}><span style={{ fontSize: 12 }}>🔒</span><span style={{ color: D.primaryLight, fontSize: 11, fontWeight: 600 }}>Dados criptografados e protegidos</span></div>
+        </div>
+      </div>
+    );
+
+    const LTABS = [
+      { id: "home", label: "Início", icon: "🏠" },
+      { id: "recs", label: "Orientações", icon: "📋" },
+      { id: "profile", label: "Perfil", icon: "👤" },
+      { id: "chat", label: "Dr. Assistant", icon: "💬" },
+      { id: "wearables", label: "Wearables", icon: "⌚" },
+    ];
+    const LSCREENS = { home: <LHomeScreen />, recs: <LRecsScreen />, profile: <LProfileScreen />, chat: <LChatScreen />, wearables: <LWearScreen /> };
+    const LDESCS = {
+      home: { title: "Início", text: "Sinais vitais em tempo real, Health Score dinâmico e tarefas diárias do plano de cuidados.", features: ["Health Score dinâmico", "Sparklines de tendência", "Checklist diário", "Dados do wearable"], color: D.success },
+      recs: { title: "Orientações Médicas", text: "Recomendações personalizadas pela IA — medicação, dieta, exercício e alertas prioritários.", features: ["Alertas por prioridade", "Lembretes de medicação", "Dieta personalizada", "Progresso de atividade"], color: D.accent },
+      profile: { title: "Perfil Médico", text: "Condições crônicas, alergias, medicações em uso, restrições alimentares e contato de emergência.", features: ["Condições crônicas", "Alergias e intolerâncias", "Medicações ativas", "Contato de emergência"], color: D.primary },
+      chat: { title: "Dr. Assistant", text: "Assistente médico inteligente via chat — tira dúvidas, orienta e ajuda a agendar consultas.", features: ["Chat em linguagem natural", "Respostas personalizadas", "Ações rápidas", "Agendamento integrado"], color: D.primaryLight },
+      wearables: { title: "Wearables", text: "Dispositivos conectados, sincronização automática, status de conexão e fluxos de dados ativos.", features: ["Multi-dispositivo", "Sync automática", "6+ fluxos de dados", "Criptografia E2E"], color: D.warning },
+    };
+
+    const PhoneD = ({ screen, vis }) => (
+      <div style={{ width: 280, height: 560, borderRadius: 36, border: "3px solid #2A2A3A", background: "#FFFFFF", overflow: "hidden", position: "relative", boxShadow: "0 25px 80px rgba(91,33,128,.25), 0 0 0 1px rgba(0,0,0,.1)", transform: vis ? "translateY(0) scale(1)" : "translateY(40px) scale(.95)", opacity: vis ? 1 : 0, transition: "all .8s cubic-bezier(.16,1,.3,1)" }}>
+        <div style={{ height: 44, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", fontSize: 12, color: "#5B5675", background: "#F7F5FB" }}>
+          <span style={{ fontWeight: 600, color: "#1A1034" }}>9:41</span>
+          <div style={{ width: 80, height: 24, borderRadius: 12, background: "#000", position: "absolute", left: "50%", transform: "translateX(-50%)", top: 8 }} />
+        </div>
+        {screen}
+      </div>
+    );
+
+    const FeatureCard = ({ icon, title, desc, delay }) => (
+      <div style={{ background: D.bgCard, borderRadius: 20, padding: 24, border: `1px solid ${D.border}`, flex: 1, minWidth: 180, animation: `cw-fadeUp .8s ease-out ${delay}s both`, transition: "border-color .3s, transform .3s", cursor: "default" }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = D.primary + "66"; e.currentTarget.style.transform = "translateY(-4px)"; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = D.border; e.currentTarget.style.transform = "translateY(0)"; }}>
+        <div style={{ width: 44, height: 44, borderRadius: 13, marginBottom: 14, background: D.mintLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{icon}</div>
+        <p style={{ color: D.text, fontSize: 15, fontWeight: 700, margin: "0 0 6px" }}>{title}</p>
+        <p style={{ color: D.textMuted, fontSize: 12, lineHeight: 1.6, margin: 0 }}>{desc}</p>
+      </div>
+    );
+
+    /* ── Landing Page Component ── */
+    const LandingPage = ({ onNavigateApp }) => {
+      const [tab, setTab] = useState("home");
+      const [loaded, setLoaded] = useState(false);
+      const [phoneVis, setPhoneVis] = useState(false);
+      useEffect(() => { setLoaded(true); setTimeout(() => setPhoneVis(true), 500); }, []);
+      const desc = LDESCS[tab];
+
+      return (
+        <div style={{ minHeight: "100vh", background: D.bg, color: D.text, fontFamily: "'DM Sans','Segoe UI',system-ui,sans-serif" }}>
+          {/* BG */}
+          <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
+            <div style={{ position: "absolute", top: -200, left: -200, width: 600, height: 600, background: `radial-gradient(circle,${D.primary}08,transparent 70%)`, animation: "cw-glow 6s ease-in-out infinite" }} />
+            <div style={{ position: "absolute", bottom: -200, right: -200, width: 500, height: 500, background: `radial-gradient(circle,${D.accent}06,transparent 70%)`, animation: "cw-glow 8s ease-in-out infinite 2s" }} />
+          </div>
+          {/* Nav */}
+          <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: `${D.bg}ee`, backdropFilter: "blur(20px)", borderBottom: `1px solid ${D.border}`, padding: "0 40px", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between", opacity: loaded ? 1 : 0, transform: loaded ? "translateY(0)" : "translateY(-20px)", transition: "all .6s ease-out" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><OwlLogo size={30} /><span style={{ fontSize: 17, fontWeight: 800, letterSpacing: -.5, color: D.primary }}>CareWatch</span></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><Pulse color={D.success} /><span style={{ color: D.success, fontSize: 11, fontWeight: 600 }}>PROTÓTIPO INTERATIVO</span></div>
+          </nav>
+          {/* Hero */}
+          <section style={{ paddingTop: 120, textAlign: "center", position: "relative", zIndex: 1, maxWidth: 880, margin: "0 auto", padding: "120px 24px 32px" }}>
+            <div style={{ display: "inline-block", padding: "5px 14px", borderRadius: 18, background: D.mintLight, border: `1px solid ${D.mint}`, marginBottom: 18, opacity: loaded ? 1 : 0, transform: loaded ? "translateY(0)" : "translateY(20px)", transition: "all .6s ease-out .2s" }}>
+              <span style={{ color: D.primary, fontSize: 12, fontWeight: 600 }}>Inteligência que cuida, tecnologia que previne</span>
+            </div>
+            <h1 style={{ fontSize: "clamp(28px,4.5vw,48px)", fontWeight: 800, lineHeight: 1.1, margin: "0 0 16px", letterSpacing: -1.5, opacity: loaded ? 1 : 0, transform: loaded ? "translateY(0)" : "translateY(20px)", transition: "all .8s ease-out .3s" }}>
+              Seu cuidado de saúde,{" "}
+              <span style={{ background: `linear-gradient(135deg,${D.accent},${D.primary})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundSize: "200% 200%", animation: "cw-grad 4s ease infinite" }}>contínuo e inteligente</span>
+            </h1>
+            <p style={{ color: D.textSec, fontSize: "clamp(13px,1.8vw,16px)", maxWidth: 520, margin: "0 auto 28px", lineHeight: 1.6, opacity: loaded ? 1 : 0, transform: loaded ? "translateY(0)" : "translateY(20px)", transition: "all .8s ease-out .4s" }}>
+              Monitoramento contínuo via wearables, orientações personalizadas pela IA e um assistente médico sempre disponível.
+            </p>
+            <div style={{ display: "flex", justifyContent: "center", gap: "clamp(20px,4vw,48px)", marginBottom: 40, opacity: loaded ? 1 : 0, transform: loaded ? "translateY(0)" : "translateY(20px)", transition: "all .8s ease-out .5s", flexWrap: "wrap" }}>
+              {[{ v: 87, s: "", l: "Health Score", c: D.success }, { v: 6, s: "+", l: "Sinais monitorados", c: D.primary }, { v: 24, s: "/7", l: "Monitoramento", c: D.accent }, { v: 100, s: "%", l: "Dados criptografados", c: D.primaryLight }].map((st, i) => (
+                <div key={i} style={{ textAlign: "center" }}>
+                  <p style={{ fontSize: "clamp(22px,2.5vw,32px)", fontWeight: 800, margin: "0 0 2px", color: st.c }}><AnimNum target={st.v} suffix={st.s} dur={1800 + i * 200} /></p>
+                  <p style={{ color: D.textMuted, fontSize: 11, margin: 0 }}>{st.l}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+          {/* Phone Demo */}
+          <section style={{ position: "relative", zIndex: 1, maxWidth: 1100, margin: "0 auto", padding: "0 24px 50px", display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 40, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 30, opacity: phoneVis ? 1 : 0, transform: phoneVis ? "translateX(0)" : "translateX(-20px)", transition: "all .8s ease-out .2s" }}>
+              {LTABS.map(t => (
+                <button key={t.id} onClick={() => setTab(t.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderRadius: 13, cursor: "pointer", border: tab === t.id ? `1px solid ${D.accent}44` : "1px solid transparent", background: tab === t.id ? D.mintLight : "transparent", color: tab === t.id ? D.text : D.textMuted, fontSize: 12, fontWeight: tab === t.id ? 600 : 400, transition: "all .3s", textAlign: "left", minWidth: 150 }}>
+                  <span style={{ fontSize: 16 }}>{t.icon}</span>{t.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ animation: "cw-float 6s ease-in-out infinite" }}><PhoneD screen={LSCREENS[tab]} vis={phoneVis} /></div>
+            <div style={{ maxWidth: 280, paddingTop: 30, opacity: phoneVis ? 1 : 0, transform: phoneVis ? "translateX(0)" : "translateX(20px)", transition: "all .8s ease-out .4s" }}>
+              <h3 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 10px" }}>{desc.title}</h3>
+              <p style={{ color: D.textSec, fontSize: 13, lineHeight: 1.7, margin: "0 0 16px" }}>{desc.text}</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                {desc.features.map((f, i) => (<div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 6, height: 6, borderRadius: 3, background: desc.color, flexShrink: 0 }} /><span style={{ color: D.textSec, fontSize: 12 }}>{f}</span></div>))}
+              </div>
+            </div>
+          </section>
+          {/* Journey */}
+          <section style={{ position: "relative", zIndex: 1, maxWidth: 1100, margin: "0 auto", padding: "32px 24px 50px" }}>
+            <h2 style={{ fontSize: "clamp(22px,2.5vw,32px)", fontWeight: 800, textAlign: "center", margin: "0 0 8px", letterSpacing: -.5 }}>Jornada do Paciente</h2>
+            <p style={{ color: D.textMuted, fontSize: 13, textAlign: "center", margin: "0 0 36px" }}>Do wearable ao cuidado contínuo, sem fricção</p>
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+              <FeatureCard icon="⌚" title="Conecte" desc="Pareie seu wearable uma única vez. Os dados fluem automaticamente." delay={.1} />
+              <FeatureCard icon="📊" title="Monitore" desc="Sinais vitais em tempo real com Health Score dinâmico." delay={.2} />
+              <FeatureCard icon="📋" title="Receba" desc="Orientações personalizadas de medicação, dieta e exercício." delay={.3} />
+              <FeatureCard icon="💬" title="Converse" desc="Tire dúvidas a qualquer hora com o Dr. Assistant." delay={.4} />
+            </div>
+          </section>
+          {/* CTA → App */}
+          <section style={{ position: "relative", zIndex: 1, maxWidth: 700, margin: "0 auto", padding: "20px 24px 60px", textAlign: "center" }}>
+            <div style={{
+              background: `linear-gradient(135deg, ${D.mint}44, ${D.primary}12)`,
+              border: `1px solid ${D.mint}`, borderRadius: 24, padding: "40px 32px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}>
+                <OwlLogo size={36} />
+              </div>
+              <h3 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 8px" }}>Experimente o App</h3>
+              <p style={{ color: D.textSec, fontSize: 14, margin: "0 0 24px", lineHeight: 1.6 }}>
+                Veja o mockup completo do aplicativo em alta fidelidade, com a experiência real do paciente.
+              </p>
+              <button onClick={onNavigateApp} style={{
+                padding: "14px 40px", borderRadius: 16, border: "none",
+                background: `linear-gradient(135deg,${D.primary},${D.primaryLight})`,
+                color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer",
+                boxShadow: `0 8px 30px ${D.primary}40`,
+                transition: "transform .2s, box-shadow .2s"
+              }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = `0 12px 40px ${D.primary}50`; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 8px 30px ${D.primary}40`; }}
+              >
+                Abrir App CareWatch →
+              </button>
+            </div>
+          </section>
+          {/* Footer */}
+          <footer style={{ position: "relative", zIndex: 1, textAlign: "center", padding: "28px 24px", borderTop: `1px solid ${D.border}` }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 }}><OwlLogo size={22} /><span style={{ fontWeight: 700, fontSize: 13 }}>CareWatch</span></div>
+            <p style={{ color: D.textMuted, fontSize: 11, margin: 0 }}>Protótipo interativo — Pitch Investidores 2026</p>
+          </footer>
+        </div>
+      );
+    };
+
+    /* ══════════════════════════════════════════════════════════════
+       PART 2: MOBILE APP MOCKUP PAGE (Light theme, phone frame)
+       ══════════════════════════════════════════════════════════════ */
+
+    /* -- App Screens (light theme) -- */
+    const AHomeScreen = () => (
+      <div style={{ padding: "0 18px 20px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div><p style={{ color: L.textMuted, fontSize: 12, margin: 0, fontWeight: 500 }}>Bom dia,</p><p style={{ color: L.text, fontSize: 19, fontWeight: 700, margin: 0 }}>Maria Silva</p></div>
+          <div style={{ width: 42, height: 42, borderRadius: 21, background: `linear-gradient(135deg,${L.primary},${L.accent})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 15, boxShadow: `0 4px 14px ${L.primary}33` }}>MS</div>
+        </div>
+        <div style={{ background: `linear-gradient(135deg,${L.primary},${L.primaryDark})`, borderRadius: 22, padding: 20, marginBottom: 18, position: "relative", overflow: "hidden", boxShadow: `0 8px 32px ${L.primary}30` }}>
+          <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,.06)" }} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", position: "relative" }}>
+            <div>
+              <p style={{ color: "rgba(255,255,255,.6)", fontSize: 11, margin: "0 0 6px", fontWeight: 500, letterSpacing: .5 }}>SEU HEALTH SCORE</p>
+              <p style={{ color: "#fff", fontSize: 40, fontWeight: 800, margin: "0 0 4px", letterSpacing: -1.5 }}>87</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ background: "rgba(134,239,172,.2)", color: "#86EFAC", fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 8 }}>▲ +3</span><span style={{ color: "rgba(255,255,255,.45)", fontSize: 10 }}>vs. semana anterior</span></div>
+            </div>
+            <div style={{ position: "relative" }}><CircProg value={87} size={68} sw={5} color="#86EFAC" bgc="rgba(255,255,255,.12)" /><span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 600, opacity: .6 }}>87%</span></div>
+          </div>
+        </div>
+        <p style={{ color: L.text, fontSize: 14, fontWeight: 700, margin: "0 0 12px" }}>Sinais Vitais</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 18 }}>
+          {[{ l: "Freq. Cardíaca", v: "72", u: "bpm", c: L.danger, bg: L.dangerBg, d: [68, 71, 75, 72, 70, 73, 72] }, { l: "SpO₂", v: "98", u: "%", c: L.primary, bg: L.primaryBg, d: [97, 98, 97, 98, 99, 98, 98] }, { l: "Glicemia", v: "95", u: "mg/dL", c: L.accent, bg: L.accentLight, d: [110, 105, 98, 102, 95, 97, 95] }, { l: "Pressão", v: "120/80", u: "mmHg", c: L.success, bg: L.successBg, d: [125, 122, 121, 120, 119, 120, 120] }].map((v, i) => (
+            <div key={i} style={{ background: L.card, borderRadius: 16, padding: 14, border: `1px solid ${L.border}`, boxShadow: "0 2px 8px rgba(0,0,0,.03)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}><div style={{ width: 8, height: 8, borderRadius: 4, background: v.c }} /><span style={{ color: L.textMuted, fontSize: 10, fontWeight: 500 }}>{v.l}</span></div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}><span style={{ color: L.text, fontSize: 24, fontWeight: 800, letterSpacing: -.5 }}>{v.v}</span><span style={{ color: L.textMuted, fontSize: 10 }}>{v.u}</span></div>
+              <div style={{ marginTop: 8 }}><SparkL data={v.d} color={v.c} /></div>
+            </div>
+          ))}
+        </div>
+        <p style={{ color: L.text, fontSize: 14, fontWeight: 700, margin: "0 0 12px" }}>Tarefas de Hoje</p>
+        <div style={{ background: L.card, borderRadius: 16, overflow: "hidden", border: `1px solid ${L.border}`, boxShadow: "0 2px 8px rgba(0,0,0,.03)" }}>
+          {[{ text: "Medir glicemia em jejum", done: true, time: "07:00", icon: "🩸" }, { text: "Levotiroxina 75mcg", done: true, time: "07:30", icon: "💊" }, { text: "Metformina 850mg", done: true, time: "08:30", icon: "💊" }, { text: "Caminhada 30 min", done: false, time: "10:00", icon: "🏃" }, { text: "Glicemia pós-almoço", done: false, time: "14:00", icon: "🩸" }, { text: "Metformina 850mg", done: false, time: "20:00", icon: "💊" }].map((t, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderTop: i ? `1px solid ${L.border}` : "none", background: t.done ? `${L.successBg}66` : "transparent" }}>
+              <div style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0, border: `2px solid ${t.done ? L.success : L.borderDark}`, background: t.done ? L.success : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#fff" }}>{t.done ? "✓" : ""}</div>
+              <span style={{ fontSize: 14 }}>{t.icon}</span>
+              <span style={{ color: t.done ? L.textMuted : L.text, fontSize: 13, fontWeight: 500, flex: 1, textDecoration: t.done ? "line-through" : "none" }}>{t.text}</span>
+              <span style={{ color: L.textMuted, fontSize: 11, fontWeight: 500 }}>{t.time}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+
+    const ARecsScreen = () => (
+      <div style={{ padding: "0 18px 20px" }}>
+        <p style={{ color: L.text, fontSize: 19, fontWeight: 700, margin: "0 0 3px" }}>Orientações</p>
+        <p style={{ color: L.textMuted, fontSize: 12, margin: "0 0 18px" }}>Personalizadas para sua condição</p>
+        <div style={{ background: `linear-gradient(135deg, ${L.accentLight}, #FFF7F2)`, borderRadius: 18, padding: 18, marginBottom: 14, border: `1px solid ${L.accent}22`, boxShadow: `0 4px 20px ${L.accent}10` }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 34, height: 34, borderRadius: 10, background: `${L.accent}18`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🩸</div><span style={{ color: L.text, fontSize: 14, fontWeight: 700 }}>Monitoramento da Glicemia</span></div>
+            <BadgeL text="PRIORITÁRIO" color={L.accent} />
+          </div>
+          <p style={{ color: L.textSec, fontSize: 12, lineHeight: 1.65, margin: "0 0 14px" }}>Meça 3x ao dia conforme orientação: jejum, pré e pós-prandial.</p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: L.card, borderRadius: 12, border: `1px solid ${L.border}` }}>
+            <span style={{ color: L.textMuted, fontSize: 11 }}>Próxima: Hoje 18h</span>
+            <button style={{ background: L.accent, border: "none", color: "#fff", fontSize: 11, fontWeight: 600, padding: "7px 16px", borderRadius: 8, cursor: "pointer", boxShadow: `0 2px 8px ${L.accent}33` }}>Registrar</button>
+          </div>
+        </div>
+        {[{ icon: "💊", t: "Medicação — Metformina", b: "LEMBRETE", bc: L.primary, d: "Tomar 850mg após o almoço com alimentos.", footer: "Próxima dose: 13h30", action: "Confirmar" }, { icon: "🥗", t: "Dieta para Diabéticos", b: "ORIENTAÇÃO", bc: L.success, d: "Prefira carboidratos complexos e fibras. Evite açúcares simples.", tags: ["Integrais", "Verduras", "Legumes", "Proteínas magras"] }, { icon: "🏃", t: "Atividade Física", b: "ORIENTAÇÃO", bc: L.success, d: "Caminhadas leves de 30 min/dia, 5x por semana.", progress: { done: 3, total: 5 } }, { icon: "😴", t: "Qualidade do Sono", b: "ATENÇÃO", bc: L.warning, d: "Sono abaixo do ideal nas últimas 3 noites. Mantenha horários regulares." }].map((c, i) => (
+          <div key={i} style={{ background: L.card, borderRadius: 16, padding: 16, marginBottom: 12, border: `1px solid ${L.border}`, boxShadow: "0 2px 8px rgba(0,0,0,.03)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}><div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 18 }}>{c.icon}</span><span style={{ color: L.text, fontSize: 13, fontWeight: 700 }}>{c.t}</span></div><BadgeL text={c.b} color={c.bc} /></div>
+            <p style={{ color: L.textSec, fontSize: 12, lineHeight: 1.6, margin: 0 }}>{c.d}</p>
+            {c.tags && <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>{c.tags.map((t, j) => (<span key={j} style={{ fontSize: 10, color: L.success, background: L.successBg, padding: "4px 10px", borderRadius: 8, fontWeight: 500 }}>{t}</span>))}</div>}
+            {c.progress && <div style={{ marginTop: 12, padding: "10px 12px", background: L.bg, borderRadius: 10 }}><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}><span style={{ color: L.textMuted, fontSize: 10 }}>Progresso semanal</span><span style={{ color: L.success, fontSize: 10, fontWeight: 600 }}>{c.progress.done} de {c.progress.total}</span></div><div style={{ height: 6, background: L.border, borderRadius: 3, overflow: "hidden" }}><div style={{ height: "100%", width: `${(c.progress.done / c.progress.total) * 100}%`, background: `linear-gradient(90deg,${L.success},${L.primary})`, borderRadius: 3 }} /></div></div>}
+            {c.footer && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, padding: "9px 12px", background: L.bg, borderRadius: 10 }}><span style={{ color: L.textMuted, fontSize: 11 }}>{c.footer}</span><button style={{ background: L.primary, border: "none", color: "#fff", fontSize: 11, fontWeight: 600, padding: "6px 14px", borderRadius: 8, cursor: "pointer" }}>{c.action}</button></div>}
+          </div>
+        ))}
+      </div>
+    );
+
+    const AProfileScreen = () => (
+      <div style={{ padding: "0 18px 20px" }}>
+        <div style={{ textAlign: "center", marginBottom: 22 }}>
+          <div style={{ width: 72, height: 72, borderRadius: 36, margin: "0 auto 12px", background: `linear-gradient(135deg,${L.primary},${L.accent})`, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 24, boxShadow: `0 6px 24px ${L.primary}30`, border: `3px solid ${L.card}` }}>MS</div>
+          <p style={{ color: L.text, fontSize: 18, fontWeight: 700, margin: "0 0 3px" }}>Maria Silva</p>
+          <p style={{ color: L.textMuted, fontSize: 12, margin: 0 }}>58 anos · Feminino · São Paulo, SP</p>
+        </div>
+        {[{ title: "Condições", chips: ["Diabetes Tipo 2", "Hipertensão", "Hipotireoidismo"], color: L.primary, bg: L.primaryBg }, { title: "Alergias", list: ["Intolerância à lactose", "Alergia a frutos do mar"] }, { title: "Medicações em Uso", meds: [{ n: "Metformina 850mg", f: "2x ao dia" }, { n: "Losartana 50mg", f: "1x ao dia" }, { n: "Levotiroxina 75mcg", f: "Jejum" }] }, { title: "Restrições Alimentares", chips: ["Baixo sódio", "Sem lactose", "Baixo açúcar"], color: L.warning, bg: L.warningBg }].map((sec, i) => (
+          <div key={i} style={{ background: L.card, borderRadius: 16, padding: 16, marginBottom: 12, border: `1px solid ${L.border}`, boxShadow: "0 2px 8px rgba(0,0,0,.03)" }}>
+            <p style={{ color: L.text, fontSize: 13, fontWeight: 700, margin: "0 0 12px" }}>{sec.title}</p>
+            {sec.chips && <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{sec.chips.map((c, j) => (<span key={j} style={{ fontSize: 11, padding: "6px 12px", borderRadius: 10, background: sec.bg, color: sec.color, fontWeight: 600, border: `1px solid ${sec.color}20` }}>{c}</span>))}</div>}
+            {sec.list && sec.list.map((it, j) => (<div key={j} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderTop: j ? `1px solid ${L.border}` : "none" }}><span style={{ fontSize: 13 }}>⚠️</span><span style={{ color: L.textSec, fontSize: 13 }}>{it}</span></div>))}
+            {sec.meds && sec.meds.map((m, j) => (<div key={j} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: j ? `1px solid ${L.border}` : "none" }}><div style={{ width: 32, height: 32, borderRadius: 10, background: L.primaryBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>💊</div><div style={{ flex: 1 }}><p style={{ color: L.text, fontSize: 13, fontWeight: 600, margin: 0 }}>{m.n}</p><p style={{ color: L.textMuted, fontSize: 11, margin: 0 }}>{m.f}</p></div></div>))}
+          </div>
+        ))}
+        <div style={{ background: L.card, borderRadius: 16, padding: 16, border: `1px solid ${L.danger}25`, boxShadow: `0 2px 12px ${L.danger}08` }}>
+          <p style={{ color: L.text, fontSize: 13, fontWeight: 700, margin: "0 0 10px" }}>Contato de Emergência</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}><div style={{ width: 40, height: 40, borderRadius: 20, background: L.dangerBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>👤</div><div style={{ flex: 1 }}><p style={{ color: L.text, fontSize: 13, fontWeight: 600, margin: 0 }}>João Silva (Filho)</p><p style={{ color: L.textMuted, fontSize: 12, margin: 0 }}>(11) 98765-4321</p></div></div>
+        </div>
+      </div>
+    );
+
+    const AChatScreen = () => {
+      const [input, setInput] = useState("");
+      const [msgs, setMsgs] = useState([
+        { from: "bot", text: "Olá Maria! Sou o Dr. Assistant. Como posso ajudar hoje?" },
+        { from: "user", text: "Minha glicemia deu 130 mg/dL em jejum. Devo me preocupar?" },
+        {
+          from: "bot", text: `Entendo. 130 mg/dL em jejum está acima do ideal (até 100). Recomendo:
+• Confirme jejum real (8h)
+• Repita amanhã
+• Mantenha Metformina
+• Evite carboidratos simples` },
+        { from: "bot", text: "Se persistir 3 dias, agende com endocrinologista. Posso ajudar?" },
+      ]);
+      const ref = useRef(null);
+      useEffect(() => { ref.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+      const send = () => { if (!input.trim()) return; setMsgs(p => [...p, { from: "user", text: input.trim() }]); setInput(""); setTimeout(() => { setMsgs(p => [...p, { from: "bot", text: "Vou analisar seus dados. Lembre-se de medir antes do almoço!" }]); }, 1000); };
+      return (
+        <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+          <div style={{ padding: "12px 18px", borderBottom: `1px solid ${L.border}`, display: "flex", alignItems: "center", gap: 10, background: L.card }}>
+            <div style={{ width: 38, height: 38, borderRadius: 19, background: `linear-gradient(135deg,${L.primary},${L.primaryLight})`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 2px 8px ${L.primary}25` }}><OwlLogo size={24} /></div>
+            <div><p style={{ color: L.text, fontSize: 14, fontWeight: 700, margin: 0 }}>Dr. Assistant</p><div style={{ display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 6, height: 6, borderRadius: 3, background: L.success }} /><span style={{ color: L.success, fontSize: 10, fontWeight: 500 }}>Online agora</span></div></div>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 8, background: L.bg }}>
+            {msgs.map((m, i) => (<div key={i} style={{ alignSelf: m.from === "user" ? "flex-end" : "flex-start", maxWidth: "80%" }}><div style={{ background: m.from === "user" ? L.primary : L.card, border: m.from === "user" ? "none" : `1px solid ${L.border}`, borderRadius: m.from === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", padding: "11px 15px", boxShadow: m.from === "user" ? `0 2px 8px ${L.primary}25` : "0 1px 4px rgba(0,0,0,.04)" }}><p style={{ color: m.from === "user" ? "#fff" : L.textSec, fontSize: 13, lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>{m.text}</p></div></div>))}
+            <div ref={ref} />
+          </div>
+          <div style={{ padding: "6px 18px 4px", display: "flex", gap: 6, overflowX: "auto", background: L.card }}>{["Agendar consulta", "Meus exames", "Dúvida medicação"].map((q, i) => (<button key={i} onClick={() => setInput(q)} style={{ padding: "6px 14px", borderRadius: 14, border: `1px solid ${L.border}`, background: L.bg, color: L.textSec, fontSize: 11, whiteSpace: "nowrap", cursor: "pointer", fontWeight: 500 }}>{q}</button>))}</div>
+          <div style={{ padding: "8px 18px 14px", display: "flex", gap: 8, background: L.card }}>
+            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="Digite sua pergunta..." style={{ flex: 1, padding: "11px 16px", borderRadius: 16, background: L.bg, border: `1px solid ${L.border}`, color: L.text, fontSize: 13, outline: "none", fontFamily: "inherit" }} />
+            <button onClick={send} style={{ width: 42, height: 42, borderRadius: 14, border: "none", background: `linear-gradient(135deg,${L.primary},${L.primaryLight})`, color: "#fff", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 2px 8px ${L.primary}30` }}>→</button>
+          </div>
+        </div>
+      );
+    };
+
+    const AWearScreen = () => (
+      <div style={{ padding: "0 18px 20px" }}>
+        <p style={{ color: L.text, fontSize: 19, fontWeight: 700, margin: "0 0 3px" }}>Wearables</p>
+        <p style={{ color: L.textMuted, fontSize: 12, margin: "0 0 18px" }}>Seus dispositivos conectados</p>
+        <div style={{ background: L.card, borderRadius: 18, padding: 18, marginBottom: 14, border: `1px solid ${L.success}30`, boxShadow: `0 4px 16px ${L.success}08` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 14, background: L.primaryBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>⌚</div>
+            <div><p style={{ color: L.text, fontSize: 14, fontWeight: 700, margin: 0 }}>Galaxy Watch 6</p><div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}><div style={{ width: 6, height: 6, borderRadius: 3, background: L.success }} /><span style={{ color: L.success, fontSize: 11, fontWeight: 500 }}>Conectado</span></div></div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>{[{ l: "Bateria", v: "72%", c: L.success }, { l: "Última sync", v: "2 min", c: L.primary }, { l: "Dados/dia", v: "1.2k", c: L.accent }].map((s, i) => (<div key={i} style={{ textAlign: "center", padding: 10, background: L.bg, borderRadius: 12 }}><p style={{ color: L.textMuted, fontSize: 9, margin: "0 0 3px", fontWeight: 500 }}>{s.l}</p><p style={{ color: s.c, fontSize: 15, fontWeight: 700, margin: 0 }}>{s.v}</p></div>))}</div>
+        </div>
+        <div style={{ background: L.card, borderRadius: 18, padding: 18, marginBottom: 18, border: `1px solid ${L.border}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 14, background: L.accentLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>💉</div>
+            <div><p style={{ color: L.text, fontSize: 14, fontWeight: 700, margin: 0 }}>Freestyle Libre 3</p><div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}><div style={{ width: 6, height: 6, borderRadius: 3, background: L.warning }} /><span style={{ color: L.warning, fontSize: 11, fontWeight: 500 }}>Aguardando pareamento</span></div></div>
+          </div>
+          <button style={{ width: "100%", padding: "12px 0", borderRadius: 12, background: L.accentLight, border: `1.5px solid ${L.accent}33`, color: L.accent, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Conectar Dispositivo</button>
+        </div>
+        <p style={{ color: L.text, fontSize: 13, fontWeight: 700, margin: "0 0 10px" }}>Dados Coletados</p>
+        {[{ icon: "❤️", n: "Frequência Cardíaca", f: "A cada 5 min" }, { icon: "🩸", n: "Oxigenação (SpO₂)", f: "A cada 15 min" }, { icon: "🏃", n: "Atividade Física", f: "Contínuo" }, { icon: "😴", n: "Qualidade do Sono", f: "Diário" }, { icon: "🌡️", n: "Temperatura", f: "A cada 30 min" }].map((s, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", marginBottom: 6, background: L.card, borderRadius: 14, border: `1px solid ${L.border}` }}>
+            <span style={{ fontSize: 18 }}>{s.icon}</span><div style={{ flex: 1 }}><p style={{ color: L.text, fontSize: 12, fontWeight: 600, margin: 0 }}>{s.n}</p><p style={{ color: L.textMuted, fontSize: 10, margin: 0 }}>{s.f}</p></div>
+            <div style={{ width: 38, height: 20, borderRadius: 10, padding: 2, background: L.success, display: "flex", alignItems: "center", justifyContent: "flex-end" }}><div style={{ width: 16, height: 16, borderRadius: 8, background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,.15)" }} /></div>
+          </div>
+        ))}
+        <div style={{ marginTop: 12, padding: 14, background: L.primaryBg, borderRadius: 14, border: `1px solid ${L.primary}15` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 13 }}>🔒</span><span style={{ color: L.primary, fontSize: 12, fontWeight: 700 }}>Dados criptografados e protegidos</span></div>
+        </div>
+      </div>
+    );
+
+    const ATABS = [
+      { id: "home", label: "Início", icon: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={a ? L.primary : L.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg> },
+      { id: "recs", label: "Orientações", icon: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={a ? L.primary : L.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg> },
+      { id: "profile", label: "Perfil", icon: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={a ? L.primary : L.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg> },
+      { id: "chat", label: "Dr. Assistant", icon: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={a ? L.primary : L.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg> },
+      { id: "wearables", label: "Wearables", icon: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={a ? L.primary : L.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="2" width="12" height="20" rx="3" /><circle cx="12" cy="12" r="3" /></svg> },
+    ];
+    const ASCREENS = { home: <AHomeScreen />, recs: <ARecsScreen />, profile: <AProfileScreen />, chat: <AChatScreen />, wearables: <AWearScreen /> };
+
+    /* ── App Mockup Page ── */
+    const AppPage = ({ onBack }) => {
+      const [tab, setTab] = useState("home");
+      const [mounted, setMounted] = useState(false);
+      useEffect(() => { setTimeout(() => setMounted(true), 100); }, []);
+
+      return (
+        <div style={{ minHeight: "100vh", background: `linear-gradient(160deg, #EFF5EE 0%, #E4EFE3 40%, #F0F5EE 100%)`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans','Segoe UI',system-ui,sans-serif", padding: "30px 20px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: "10%", left: "20%", width: 400, height: 400, background: `radial-gradient(circle,${D.primary}10,transparent 70%)`, pointerEvents: "none" }} />
+          <div style={{ position: "absolute", bottom: "10%", right: "20%", width: 300, height: 300, background: `radial-gradient(circle,${D.accent}12,transparent 70%)`, pointerEvents: "none" }} />
+
+          {/* Back button */}
+          <button onClick={onBack} style={{
+            position: "fixed", top: 20, left: 20, zIndex: 200,
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "10px 20px", borderRadius: 14, border: `1px solid ${D.border}`,
+            background: "rgba(255,255,255,.8)", backdropFilter: "blur(10px)",
+            color: D.primary, fontSize: 13, fontWeight: 600, cursor: "pointer"
+          }}>← Voltar ao Protótipo</button>
+
+          {/* Phone */}
+          <div style={{ width: 375, height: 812, borderRadius: 44, background: "#000", padding: 8, boxShadow: `0 40px 100px rgba(91,33,128,.2), 0 0 0 1px rgba(0,0,0,.08)`, transform: mounted ? "scale(1) translateY(0)" : "scale(.95) translateY(20px)", opacity: mounted ? 1 : 0, transition: "all .8s cubic-bezier(.16,1,.3,1)" }}>
+            <div style={{ width: "100%", height: "100%", borderRadius: 36, background: L.bg, overflow: "hidden", display: "flex", flexDirection: "column", position: "relative" }}>
+              {/* Status bar */}
+              <div style={{ height: 50, padding: "14px 28px 0", display: "flex", alignItems: "center", justifyContent: "space-between", background: tab === "chat" ? L.card : L.bg, flexShrink: 0 }}>
+                <span style={{ color: L.text, fontSize: 15, fontWeight: 700 }}>9:41</span>
+                <div style={{ width: 100, height: 28, borderRadius: 14, background: "#000", position: "absolute", left: "50%", transform: "translateX(-50%)", top: 16 }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ width: 24, height: 12, border: `1.5px solid ${L.textMuted}`, borderRadius: 3, position: "relative" }}><div style={{ position: "absolute", right: 1.5, top: 1.5, bottom: 1.5, width: 14, background: L.success, borderRadius: 1.5 }} /></div>
+                </div>
+              </div>
+              {/* App header */}
+              <div style={{ padding: "8px 18px 12px", display: "flex", alignItems: "center", gap: 8, background: tab === "chat" ? L.card : L.bg, flexShrink: 0 }}>
+                <OwlLogo size={26} /><span style={{ fontSize: 16, fontWeight: 800, color: L.primary, letterSpacing: -.3 }}>CareWatch</span>
+              </div>
+              {/* Content */}
+              <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>{ASCREENS[tab]}</div>
+              {/* Tab bar */}
+              <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", padding: "8px 6px 24px", background: L.card, borderTop: `1px solid ${L.border}`, flexShrink: 0 }}>
+                {ATABS.map(t => (
+                  <button key={t.id} onClick={() => setTab(t.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", padding: "4px 8px" }}>
+                    {t.icon(tab === t.id)}
+                    <span style={{ fontSize: 9, fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? L.primary : L.textMuted }}>{t.label}</span>
+                    {tab === t.id && <div style={{ width: 4, height: 4, borderRadius: 2, background: L.primary, marginTop: -1 }} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    /* ══════════════════════════════════════════════════════════════
+       ROUTER
+       ══════════════════════════════════════════════════════════════ */
+    window.CareWatch = function CareWatch() {
+      const [route, setRoute] = useState("landing");
+
+      return (
+        <>
+          <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&display=swap');
+        @keyframes cw-pulse{0%,100%{transform:scale(1);opacity:.4}50%{transform:scale(1.8);opacity:0}}
+        @keyframes cw-fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes cw-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+        @keyframes cw-grad{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+        @keyframes cw-glow{0%,100%{opacity:.3}50%{opacity:.6}}
+        *{scrollbar-width:thin;scrollbar-color:#C8DCC4 transparent;box-sizing:border-box}
+        *::-webkit-scrollbar{width:3px}*::-webkit-scrollbar-track{background:transparent}*::-webkit-scrollbar-thumb{background:#C8DCC4;border-radius:3px}
+        input::placeholder{color:#9490A8}
+      `}</style>
+          {route === "landing" ? (
+            <LandingPage onNavigateApp={() => { setRoute("app"); window.scrollTo(0, 0); }} />
+          ) : (
+            <AppPage onBack={() => { setRoute("landing"); window.scrollTo(0, 0); }} />
+          )}
+        </>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(window.CareWatch));
+  </script>
+</body>
+
+</html>
